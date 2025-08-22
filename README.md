@@ -1,4 +1,4 @@
-# SKN15-3rd-1TEAM
+# skn15-3rd-1team
 
 
 # 1. 팀 소개
