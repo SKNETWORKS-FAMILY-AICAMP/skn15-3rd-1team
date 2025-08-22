@@ -10,7 +10,7 @@
 
 
 | 조태민 | 박진우 | 서혜선 | 임가은 | 임경원 | 홍민식 |
-|:---:|<img width="175" height="191" alt="Image" src="https://github.com/user-attachments/assets/6ec5c5be-b7dc-4b77-84f8-73eae0735138" />|:---:|:---:|:---:|:---:|
+|:---:||:---:|:---:|:---:|:---:|:---:|
 | ![image]() | ![image]() | ![image]() | ![image]() | ![image]() | ![image]() |
 | [@o2mandoo](https://github.com/o2mandoo) | [@pjw876](https://github.com/pjw876) | [@hyeseon](https://github.com/hyeseon7135) | [@mars7421](https://github.com/mars7421) | [@KYUNGWON-99](https://github.com/KYUNGWON-99) | [@minnnsik](https://github.com/minnnsik) |
 
