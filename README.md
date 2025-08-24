@@ -25,28 +25,67 @@
 # 3. 프로젝트 개요
 
 ## 📕 프로젝트명
+### Lecture-RAG: 강의록 기반 AI 학습 도우미
 
 
 ## ✅ 프로젝트 배경 및 목적
+### - 부트캠프에서 다루는 방대한 강의 내용을 효과적으로 학습할 수 있도록 LLM을 활용한 “맞춤형 질문/답변 시스템” 필요
 
+### - 단순 GPT 질의응답이 아닌, 사용자가 제공한 강의록/문서 기반으로 답변을 생성하여 맥락적 신뢰성 확보
+
+### - 불필요한 외부 라이브러리 호출을 방지하고, 강의록에서 제공된 함수·코드 스타일을 모방하여 코드 예제 제시
 
 ## 🖐️ 프로젝트 소개
+### - 업로드한 강의록(.txt, .py, .md 등) 파일을 자동으로 청킹하고 임베딩하여 FAISS VectorStore에 저장
 
+### - 사용자가 입력한 질문을 기반으로 강의록에서 의미적으로 유사한 조각을 검색
+
+### - OpenAI GPT 모델을 통해 컨텍스트 RAG 기반 답변 생성
+
+### - 미허용된 토큰(import, 함수) 사용 시 자동으로 감지하여 재생성 기능 수행
+
+### - Streamlit UI를 통해 손쉽게 문서 업로드, 인덱싱, 질의응답 가능
+  
 ## ❤️ 기대효과
+### - 강의 내용 복습 및 개인화된 학습 도우미 활용 가능
+
+### - 코딩 학습 시 강의 자료 기반 맞춤 코드 예제를 제공 → 실습 효율성 향상
+
+### - 불필요하거나 잘못된 답변 최소화
 
 ## 👤 대상 사용자
+### - 부트캠프 수강생 및 기타 강의 학습자
 
-
+### - 내부 매뉴얼/문서를 기반으로 효율적 학습이 필요한 개발자 및 연구원
 
 # 4. 기술 스택
 
- - 
+
+| Field	| Tool |
+|----|---|
+| Frontend	| <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white"> |
+| LLM	| <img src="https://img.shields.io/badge/OpenAI%20GPT-412991?style=for-the-badge&logo=openai&logoColor=white"> <img src="https://img.shields.io/badge/langchain--openai-0B3B5B?style=for-the-badge&logo=openai&logoColor=white"> |
+| Vector DB	| <img src="https://img.shields.io/badge/FAISS-20232A?style=for-the-badge&logo=facebook&logoColor=white"> |
+| Embedding	| <img src="https://img.shields.io/badge/HuggingFace%20all--MiniLM--L6--v2-FFAE00?style=for-the-badge&logo=huggingface&logoColor=white"> |
+| Framework	| <img src="https://img.shields.io/badge/LangChain-0B3B5B?style=for-the-badge&logo=chainlink&logoColor=white"> |
+| Language	| <img src="https://img.shields.io/badge/Python%203.8%2B-3776AB?style=for-the-badge&logo=Python&logoColor=white">| 
 
 
 # 5. 수행결과
+🎥 시연 화면 (예시)
+### - 메인 UI: 강의록 업로드 & 인덱싱
 
+### - 질의응답 데모: 질문 입력 → 강의록 기반 답변 생성
 
+### - 출력 결과:
 
+* 간단한 설명
+
+* 필요 시 코드
+
+* 근거가 된 강의록 스니펫
+
+## 📂 **주요 파일 구조**
 
 # 6. 한 줄 회고
 
