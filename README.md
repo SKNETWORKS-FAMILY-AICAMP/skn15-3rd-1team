@@ -224,7 +224,7 @@ answer_guide: str = (
 - **품질 관리**: 유사·중복 스니펫은 통합하고 Top-K 내에서 핵심만 사용하여 장황한 인용을 피한다.
 ---
 ## 3.13 데이터 전처리
-### 1️⃣ 입력: 파일 읽기
+1️⃣ 입력: 파일 읽기
 ```python
 def process_file(self, file_path: Path) -> List[Document]:
     """
