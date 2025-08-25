@@ -62,18 +62,22 @@
 ```
 SKN15-3rd-1Team/
 
-├── 📁 lecture_rag/                  # 강의록 기반 RAG 패키지(인덱싱·검색·LLM 호출)
-│   ├── __init__.py                  # 공개 API와 버전, 핵심 클래스/함수 내보내기
-│   ├── app.py                       # Streamlit 웹앱(UI, 인덱싱/질의응답 흐름)
-│   ├── config.py                    # dataclass 기반 설정(LLM/청킹/탐색/LFS 등)
-│   ├── document_processor.py        # 날짜 패턴 기반(YYYY.MM.DD) 청킹 로직
-│   ├── llm_handler.py               # LangChain ChatOpenAI 래퍼, 답변 생성/검증
-│   ├── utils.py                     # 텍스트 입출력, 코드블록 감지, 토큰 추출/검증
-│   └── vector_store.py              # FAISS 벡터스토어 관리(인덱싱/저장/검색)
-├── .gitignore                       # 불필요 파일 제외 규칙
-├── main.py                          # 앱 실행 진입점(lecture_rag.app.main 호출 가정)
-├── README.md                        # 프로젝트 문서
-└── requirements.txt                 # 의존성 목록
+├── 📁 lecture_rag/                     # 강의록 기반 RAG 패키지
+│   ├── __init__.py                     # 패키지 초기화/공개 API
+│   ├── app.py                          # Streamlit 앱 엔트리(UI, 인덱싱/QA)
+│   ├── config.py                       # dataclass 설정(LLM/청킹/검색/프롬프트)
+│   ├── document_processor.py           # 날짜(YYYY.MM.DD) 기반 청킹 및 메타 생성
+│   ├── google_drive.py                 # (신규) 구글 드라이브 연계 모듈(파일 로드/저장)
+│   ├── llm_handler.py                  # ChatOpenAI 래퍼, 답변 생성/재시도/토큰검증
+│   ├── utils.py                        # 텍스트 I/O, 코드블록 감지, 허용 토큰 유틸
+│   └── vector_store.py                 # FAISS 임베딩/인덱싱/검색, allowed_tokens.json 관리
+├── .gitignore                          # Git 제외 규칙
+├── langgraph_flow.py                   # 랭그래프 파이프라인 정의/다이어그램 생성 스크립트
+├── main.py                             # (선택) 앱 실행 진입점
+├── rag_flow.png                        # 파이프라인 이미지(README 삽입용)
+├── rag_flow_mermaid.md                 # Mermaid 다이어그램 정의(문서화용)
+├── README.md                           # 프로젝트 문서
+└── requirements.txt                    # 의존성 목록
   🚫 로컬에만 있는 파일들 (.gitignore로 제외)
 #.env - OpenAI API 키 등
 # .lecture_index/ - FAISS 인덱스 (토큰 포함)
@@ -155,6 +159,106 @@ answer_guide: str = (
 - **품질 관리**: 유사·중복 스니펫은 통합하고 Top-K 내에서 핵심만 사용하여 장황한 인용을 피한다.
 ---
 ## 데이터 전처리
+### 1️⃣ 입력: 파일 읽기
+```python
+def process_file(self, file_path: Path) -> List[Document]:
+    """
+    파일을 읽어서 Document 청크로 변환
+    """
+    text = read_text(file_path)  # <- 여기서 전체 텍스트 읽음
+    return self.chunk_documents(text, source=str(file_path))
+```
+- read_text(file_path) → utils.py의 함수
+
+- 전체 텍스트를 불러와서 chunk_documents로 전달
+```
+2️⃣ 날짜 기반 청크 분할
+```python
+def chunk_documents(self, text: str, source: str) -> List[Document]:
+    """
+    텍스트를 날짜 기반으로 청킹 (YYYY.MM.DD 패턴)
+    """
+    date_pattern = r'^(\d{4}\.\d{2}\.\d{2})\s*'  # <- 날짜 패턴 정의
+    lines = text.splitlines()
+    docs: List[Document] = []
+    current_chunk_lines = []
+    current_date = None
+    current_start_line = 1
+    chunk_idx = 0
+
+    for line_idx, line in enumerate(lines, 1):
+        date_match = re.match(date_pattern, line.strip())
+        
+        if date_match:
+            if current_chunk_lines and current_date:
+                # 이전 청크 저장
+                chunk_content = '\n'.join(current_chunk_lines)
+                if chunk_content.strip():
+                    docs.append(self._create_date_chunk_document(
+                        chunk_content, source, current_date, current_start_line, 
+                        line_idx - 1, chunk_idx
+                    ))
+                    chunk_idx += 1
+            
+            # 새 청크 시작
+            current_date = date_match.group(1)
+            current_start_line = line_idx
+            current_chunk_lines = [line]
+        else:
+            current_chunk_lines.append(line)
+    
+    # 마지막 청크 처리
+    if current_chunk_lines and current_date:
+        chunk_content = '\n'.join(current_chunk_lines)
+        if chunk_content.strip():
+            docs.append(self._create_date_chunk_document(
+                chunk_content, source, current_date, current_start_line, 
+                len(lines), chunk_idx
+            ))
+    
+    return docs
+```
+
+- 핵심: 날짜가 나오면 새 청크 시작, 이전 청크는 _create_date_chunk_document로 Document 생성
+
+- 줄 단위 순회하면서 문맥 유지
+
+3️⃣ Document 객체 생성
+```python
+def _create_date_chunk_document(
+    self, content: str, source: str, date: str, 
+    start_line: int, end_line: int, chunk_idx: int
+) -> Document:
+    """날짜 기반 청크용 Document 생성"""
+    lines = content.splitlines()
+    first_line = lines[0] if lines else ""
+    last_line = lines[-1] if lines else ""
+    
+    # 첫 줄에서 날짜 제거 후 미리보기
+    first_line_preview = re.sub(r'^\d{4}\.\d{2}\.\d{2}\s*', '', first_line)
+    first_line_preview = first_line_preview[:50] + "..." if len(first_line_preview) > 50 else first_line_preview
+    
+    return Document(
+        page_content=content,
+        metadata={
+            "source": source,
+            "kind": "lecture_date",
+            "date": date,
+            "chunk_id": f"{source}:date_{chunk_idx}",
+            "start_line": start_line,
+            "end_line": end_line,
+            "line_count": len(lines),
+            "first_line_preview": first_line_preview,
+            "last_line_preview": last_line[:50] + "..." if len(last_line) > 50 else last_line
+        }
+    )
+```
+
+- 날짜 기반 청크를 Document 객체로 변환
+
+- 메타데이터 포함 → RAG에서 근거 스니펫 표시 가능
+
+
 ---
 ## 환경설정
 ### 1️⃣ 패키지 설치
@@ -191,20 +295,79 @@ python -m streamlit run lecture_rag/app.py
 
 ---
 # 5. 수행결과
-🎥 시연 화면 (예시)
-### - 메인 UI: 강의록 업로드 & 인덱싱
+## 🎥 시연 화면 (예시)
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/60f44115-c70d-4ebf-b8a6-3390a60f5c0e" />
+****
+---
+### 🏠 0) 홈 화면(Overview)
+**설정 패널(좌측)**
+- FAISS 저장 디렉터리: 벡터 인덱스와 허용 토큰 파일이 저장될 로컬 경로를 지정한다(예: `.lecture_index`).  
+- LLM 모델 선택: 기본값은 환경변수(예: `LECTURE_RAG_MODEL`)를 따르며, 드롭다운에서 실행 중에 변경 가능하다.  
+- Temperature 슬라이더: 생성 다양성을 제어한다(낮을수록 보수적, 높을수록 창의적).  
 
-### - 질의응답 데모: 질문 입력 → 강의록 기반 답변 생성
+**질문/옵션 영역(중앙)**
+- 질의 입력창: 분석·설명·코드 요청 등 자연어 질문을 입력한다.  
+- Top‑K 문서: 검색에서 가져올 스니펫 개수를 조절하여 컨텍스트의 폭을 설정한다.  
+- 답변 생성 버튼: 현재 설정과 인덱스를 기반으로 컨텍스트를 구성해 LLM 답변을 생성한다.  
 
-### - 출력 결과:
+**인덱싱(좌측 하단)**
+- 구글 드라이브에서 강의록 가져오기: 드라이브에 업로드된 텍스트/마크다운/코드 파일을 불러와 인덱싱할 수 있다.  
+- 로컬 파일 업로드(대안): 드라이브 사용이 어려울 때 로컬 파일을 직접 선택해 인덱싱을 수행한다.  
 
-* 간단한 설명
+**사용 흐름 요약**
+1) 좌측에서 모델·인덱스 경로·온도를 설정한다.  
+2) 인덱싱 섹션에서 강의록을 업로드(또는 드라이브에서 가져오기)하여 벡터 인덱스를 생성한다.  
+3) 중앙 입력창에 질문을 입력하고 Top‑K를 조절한 뒤 “답변 생성”을 누르면, 근거 스니펫을 바탕으로 답변과 코드가 출력된다.  
 
-* 필요 시 코드
+**안내**
+- OpenAI 계열 모델을 사용할 때는 사전에 API 키(예: `OPENAI_API_KEY`)가 환경에 설정되어 있어야 정상 동작한다.  
+- 프로젝트별 문서로 인덱싱을 분리하려면 저장 디렉터리를 서로 다른 경로로 지정해 독립적인 컨텍스트를 유지할 수 있다.  
+---
+### 📌 1) 답변 섹션(개요 + RAG 코드 샘플)
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/4f9553b6-979b-4427-bf19-4383ca24c5ee" />
+- 상단에 “답변” 제목과 함께 RAG의 개념 요약이 먼저 노출되고, 그 아래에는 기본 RAG 체인을 구성하는 코드 예시가 포함된다.  
+- 이 화면은 사용자가 모델이 어떤 방식으로 답을 생성하는지 이해하도록 돕는 “학습/가이드 영역” 역할을 한다.  
+---
+### 📌 2) 근거 스니펫(세부 확인 패널)
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/fea657c8-a0a9-4dc6-9f60-90692c2d184a" />
 
-* 근거가 된 강의록 스니펫
 
-## 📂 **주요 파일 구조**
+- 검색된 문서 조각들이 Chunk 단위로 나열되며, 각 항목을 펼치면 해당 스니펫의 본문과 라인 범위, 타입(text/code) 같은 메타데이터를 확인할 수 있다.  
+- “원본에서 찾기” 힌트를 제공해 실제 파일의 위치(라인 번호 기준)를 빠르게 탐색하도록 돕는 검증용 UI다. 
+---
+### 📌 3) 질의/옵션 입력 영역(실행 패널)
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/a6382b77-f3c5-4caf-a2c9-3a5dd8f061d5" />
+
+- 중앙 상단에 질문 입력창과 Top‑K 슬라이더가 배치되어 검색 범위를 조정할 수 있고, 우측 드롭존에는 추가 컨텍스트 파일을 일시 첨부할 수 있다.  
+- 좌측 사이드바에는 인덱스 경로, LLM 모델, Temperature 등의 런타임 설정이 모여 있어 “실행 전 준비/세팅”을 담당한다.  
+---
+### 📌 4) 최종 답변 + 근거 요약(결과 패널)
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/78c73580-808e-4363-9147-1468486f5414" />
+
+- 생성된 답변이 문단과 코드 블록으로 제시되며, 하단에는 “사용한 근거 스니펫들” 목록이 요약되어 근거 기반 응답임을 명확히 한다.  
+- 이 화면은 사용자가 즉시 실행 가능한 코드와 함께, 어떤 스니펫이 답변을 뒷받침했는지를 한 눈에 확인하는 “결과/검증” 단계다.  
+---
+### 📌 5) 답변 방식 비교
+### 1) 기술 개념 질문 화면: “rag가 뭐야?”
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/63067634-177f-4e40-8643-2c134c147fcf" />
+
+- 목적: 강의 컨텍스트에 존재하는 개념(RAG)을 질의했을 때의 정상 동작 예시를 보여준다.  
+- 특징:
+  - 상단 입력창과 Top‑K 조절 슬라이더로 검색 폭을 설정하고, 우측 드롭존에 추가 컨텍스트를 첨부할 수 있다.  
+  - 하단 “답변” 섹션에서 RAG 정의와 동작 원리를 서술하고, 이어서 RAG 체인을 구성하는 코드 예시를 제공한다.  
+  - 근거 스니펫 패널로 어떤 강의 일자/라인에서 정보를 인용했는지 검증 가능하다.  
+
+### 2) 비컨텍스트 일반지식 질문 화면: “호날두가 누구야?”
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/2639cf92-4692-4912-92ee-2ae39238a519" />
+
+- 목적: 강의록 범위를 벗어난 일반 지식 질문에 대해 시스템이 어떻게 안전하게 응답하는지 보여준다.  
+- 특징:
+  - 출력 포맷은 동일하게 유지하되, 코드 섹션은 “필요 시” 조건에 따라 생략된다.  
+  - “사용한 근거 스니펫들”에 컨텍스트 부재 안내가 포함되어, 강의 자료에 근거가 없음을 명확히 알린다.  
+  - 환각 방지를 위해 외부 지식으로 채우지 않고, 정중한 제한 응답 정책을 따른다.
+ 
+### 📖 답변 방식 요약
+#### ➡️ 첫 화면은 강의 컨텍스트 기반의 “설명+코드+근거” 풀 세트를 보여 주고, 두 번째 화면은 컨텍스트 부재 시 “정중한 제한 응답”으로 전환하는 정책을 시각적으로 확인
 ---
 # 6. 한 줄 회고
 
