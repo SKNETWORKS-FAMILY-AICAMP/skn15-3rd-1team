@@ -171,7 +171,7 @@ def process_file(self, file_path: Path) -> List[Document]:
 - read_text(file_path) → utils.py의 함수
 
 - 전체 텍스트를 불러와서 chunk_documents로 전달
-```
+
 2️⃣ 날짜 기반 청크 분할
 ```python
 def chunk_documents(self, text: str, source: str) -> List[Document]:
