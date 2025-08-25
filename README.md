@@ -94,7 +94,7 @@
 ```
 SKN15-3rd-1Team/
 
-├── 📁 lecture_rag/                     # 강의록 기반 RAG 패키지
+├── 📁 lecture_rag/                   	# 강의록 기반 RAG 패키지
 │   ├── __init__.py                     # 패키지 초기화/공개 API
 │   ├── app.py                          # Streamlit 앱 엔트리(UI, 인덱싱/QA)
 │   ├── config.py                       # dataclass 설정(LLM/청킹/검색/프롬프트)
@@ -236,7 +236,7 @@ def process_file(self, file_path: Path) -> List[Document]:
 - read_text(file_path) → utils.py의 함수
 
 - 전체 텍스트를 불러와서 chunk_documents로 전달
-```
+
 2️⃣ 날짜 기반 청크 분할
 ```python
 def chunk_documents(self, text: str, source: str) -> List[Document]:
