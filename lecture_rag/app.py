@@ -403,8 +403,8 @@ class LectureRAGApp:
         
         # 질문 입력
         query = st.text_input(
-            "질문을 입력하세요", 
-            placeholder="예) RAG에 대해 알려줘",
+            "", 
+            placeholder="질문을 입력하세요",
             key=f"chat_input_{st.session_state.message_counter}"
         )
         
