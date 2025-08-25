@@ -5,7 +5,7 @@ Streamlit 기반 Lecture-RAG 웹 애플리케이션
 from __future__ import annotations
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 import streamlit as st
 
@@ -21,6 +21,7 @@ class LectureRAGApp:
     def __init__(self):
         self.config = Config.from_env()
         self._setup_page()
+        self._init_session_state()
     
     def _setup_page(self):
         """페이지 기본 설정"""
@@ -30,6 +31,141 @@ class LectureRAGApp:
             layout="wide"
         )
         st.title("Lecture-RAG")
+        
+        # 채팅 스타일 CSS 추가
+        st.markdown("""
+        <style>
+        .chat-container {
+            max-width: 800px;
+            margin: 0;
+            padding: 20px 0;
+        }
+        
+        /* 사용자 메시지 (오른쪽) */
+        .user-message-container {
+            display: flex;
+            justify-content: flex-end;
+            margin: 15px 0;
+        }
+        .user-message {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 18px 18px 4px 18px;
+            max-width: 70%;
+            box-shadow: 0 2px 12px rgba(79, 70, 229, 0.3);
+            margin-left: 20px;
+        }
+        .user-label {
+            font-size: 0.75em;
+            opacity: 0.8;
+            margin-bottom: 4px;
+            text-align: right;
+        }
+        .user-content {
+            font-size: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        
+        /* AI 메시지 (왼쪽) */
+        .ai-message-container {
+            display: flex;
+            justify-content: flex-start;
+            margin: 15px 0;
+            padding-left: 0;
+        }
+        .ai-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .ai-message {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            padding: 14px 18px;
+            border-radius: 18px 18px 18px 4px;
+            max-width: 70%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            position: relative;
+        }
+        .ai-label {
+            font-size: 0.75em;
+            color: #10b981;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .ai-content {
+            font-size: 15px;
+            line-height: 1.5;
+            color: #374151;
+            word-wrap: break-word;
+        }
+        .click-hint {
+            font-size: 0.7em;
+            color: #9ca3af;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        
+        /* 버튼 스타일 개선 */
+        .stButton > button {
+            width: 100% !important;
+            background: transparent !important;
+            border: 2px solid #000000 !important;
+            border-radius: 18px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            text-align: left !important;
+            color: #000000 !important;
+        }
+        .stButton > button:hover {
+            background: transparent !important;
+            border-color: #000000 !important;
+        }
+        .ai-message {
+            background: #ffffff;
+            border: 2px solid #000000;
+            padding: 14px 18px;
+            border-radius: 18px 18px 18px 4px;
+            max-width: 70%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .ai-message:hover {
+            border-color: #000000;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .ai-content {
+            font-size: 15px;
+            line-height: 1.5;
+            color: #000000;
+            word-wrap: break-word;
+        }
+        
+        /* 입력창 스타일 */
+        .stTextInput > div > div > input {
+            border-radius: 25px;
+            border: 2px solid #e5e7eb;
+            padding: 12px 20px;
+        }
+        .stTextInput > div > div > input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        </style>
+        """, unsafe_allow_html=True)
     
     def _render_sidebar(self) -> tuple[VectorStore, str, float]:
         """사이드바 렌더링"""
@@ -78,6 +214,15 @@ class LectureRAGApp:
             self._render_indexing_section(vector_store, model, temp)
             
             return vector_store, model, temp
+    
+    def _init_session_state(self):
+        """세션 상태 초기화"""
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+        if "detailed_view" not in st.session_state:
+            st.session_state.detailed_view = None  # 상세 보기할 메시지 ID
+        if "message_counter" not in st.session_state:
+            st.session_state.message_counter = 0
     
     def _render_indexing_section(
         self, 
@@ -211,17 +356,25 @@ class LectureRAGApp:
         """질의응답 섹션 렌더링"""
         st.divider()
         
-        # 질문 입력 및 옵션 설정
-        colQ, colOpt = st.columns([2, 1], vertical_alignment="top")
+        # 상세 보기가 활성화된 경우 상세 화면 렌더링
+        if st.session_state.detailed_view is not None:
+            self._render_detailed_view()
+            return
         
-        with colQ:
-            st.subheader("질의응답")
-            query = st.text_input(
-                "질문을 입력하세요", 
-                placeholder="예) RAG에 대해 알려줘"
-            )
+        # 채팅형 인터페이스 렌더링
+        self._render_chat_interface(vector_store, model, temp)
+    
+    def _render_chat_interface(
+        self, 
+        vector_store: VectorStore, 
+        model: str, 
+        temp: float
+    ):
+        """채팅형 인터페이스 렌더링"""
+        st.subheader("💬 채팅")
         
-        with colOpt:
+        # 옵션 설정
+        with st.expander("⚙️ 옵션 설정", expanded=False):
             topk = st.slider(
                 "Top-K 문서", 
                 min_value=self.config.min_top_k, 
@@ -229,11 +382,46 @@ class LectureRAGApp:
                 value=self.config.default_top_k, 
                 step=1
             )
+            st.session_state.topk = topk
         
-        ask = st.button("답변 생성", type="primary")
+        # 메시지 히스토리 표시
+        if st.session_state.messages:
+            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+            for message in st.session_state.messages:
+                self._render_message(message)
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(
+                '''
+                <div style="text-align: center; padding: 40px 0; color: #9ca3af;">
+                    <h3>안녕하세요! AI웅이에요 🤖</h3>
+                    <p>강의록에 대해 궁금한 것을 물어보세요!</p>
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
         
-        if ask:
-            self._handle_qa(vector_store, query, topk, model, temp)
+        # 질문 입력
+        query = st.text_input(
+            "질문을 입력하세요", 
+            placeholder="예) RAG에 대해 알려줘",
+            key=f"chat_input_{st.session_state.message_counter}"
+        )
+        
+        # 전송 버튼
+        col1, col2, col3 = st.columns([1, 1, 4])
+        with col1:
+            send_button = st.button("📤 전송", type="primary")
+        with col2:
+            clear_button = st.button("🗑️ 초기화")
+        
+        if clear_button:
+            st.session_state.messages = []
+            st.session_state.message_counter = 0
+            st.rerun()
+        
+        if send_button and query.strip():
+            self._handle_chat_qa(vector_store, query, model, temp)
     
     def _handle_qa(
         self, 
@@ -337,6 +525,224 @@ class LectureRAGApp:
                 
                 # 원본 파일에서 찾는 방법 안내
                 st.info(f"💡 원본에서 찾기: '{meta.get('first_line_preview', '')}' 검색하여 {location_info} 확인")
+    
+    def _render_message(self, message: Dict[str, Any]):
+        """개별 메시지 렌더링"""
+        if message["role"] == "user":
+            # 사용자 메시지 (오른쪽)
+            st.markdown(
+                f'''
+                <div class="user-message-container">
+                    <div class="user-message">
+                        <div class="user-label">You</div>
+                        <div class="user-content">{message["content"]}</div>
+                    </div>
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
+        else:  # assistant
+            # 요약 답변 비공인지 확인
+            has_summary = "summary" in message and message["summary"].strip()
+            
+            if has_summary:
+                # AI 메시지 (왼쪽) - 클릭 가능한 버튼으로 표시
+                col1, col2 = st.columns([0.5, 11])
+                
+                with col1:
+                    st.markdown(
+                        '<div class="ai-avatar">웅</div>',
+                        unsafe_allow_html=True
+                    )
+                
+                with col2:
+                    if st.button(
+                        f"**AI웅**\n\n{message['summary']}\n\n*📋 클릭하여 상세 답변 및 근거 스니펫 보기*",
+                        key=f"message_{message['id']}",
+                        help="클릭하여 상세 답변 보기",
+                        use_container_width=True
+                    ):
+                        st.session_state.detailed_view = message["id"]
+                        st.rerun()
+            else:
+                # 요약이 없으면 전체 답변 표시
+                col1, col2 = st.columns([0.5, 11])
+                
+                with col1:
+                    st.markdown(
+                        '<div class="ai-avatar">웅</div>',
+                        unsafe_allow_html=True
+                    )
+                
+                with col2:
+                    st.markdown(
+                        f'''
+                        <div class="ai-message">
+                            <div class="ai-label">AI웅</div>
+                            <div class="ai-content">{message["content"]}</div>
+                        </div>
+                        ''',
+                        unsafe_allow_html=True
+                    )
+    
+    
+    def _handle_chat_qa(
+        self, 
+        vector_store: VectorStore, 
+        query: str, 
+        model: str, 
+        temp: float
+    ):
+        """채팅형 질의응답 처리"""
+        # 사용자 메시지 추가
+        user_message = {
+            "role": "user",
+            "content": query,
+            "id": st.session_state.message_counter
+        }
+        st.session_state.messages.append(user_message)
+        st.session_state.message_counter += 1
+        
+        # 입력 필드는 자동으로 초기화됨 (직접 수정하지 않음)
+        
+        # 답변 생성
+        topk = st.session_state.get('topk', self.config.default_top_k)
+        
+        # 로딩 메시지 임시 표시
+        with st.empty():
+            col1, col2 = st.columns([0.5, 11])
+            with col1:
+                st.markdown('<div class="ai-avatar">웅</div>', unsafe_allow_html=True)
+            with col2:
+                with st.spinner("AI웅이 답변을 생성하고 있어요..."):
+                    try:
+                        # 기존 QA 로직 사용
+                        config = Config(model_name=model, temperature=temp)
+                        config.to_env()
+                        
+                        # 문서 검색
+                        docs, allowed = vector_store.search(query, k=topk)
+                        
+                        if not docs:
+                            assistant_message = {
+                                "role": "assistant",
+                                "content": "검색 결과가 없습니다. 인덱싱을 먼저 수행해주세요.",
+                                "id": st.session_state.message_counter,
+                                "summary": ""
+                            }
+                        else:
+                            # LLM 답변 생성
+                            llm_handler = LLMHandler(config)
+                            full_answer = llm_handler.generate_answer(query, docs, allowed)
+                            
+                            # 요약 답변 생성
+                            summary_answer = self._generate_summary_answer(llm_handler, query, full_answer)
+                            
+                            assistant_message = {
+                                "role": "assistant",
+                                "content": full_answer,
+                                "summary": summary_answer,
+                                "id": st.session_state.message_counter,
+                                "query": query,
+                                "docs": docs,
+                                "allowed": allowed,
+                                "unknown_tokens": llm_handler._check_unknown_tokens(full_answer, allowed)
+                            }
+                        
+                        # 답변 메시지 추가
+                        st.session_state.messages.append(assistant_message)
+                        st.session_state.message_counter += 1
+                        
+                    except Exception as e:
+                        error_message = {
+                            "role": "assistant",
+                            "content": f"오류가 발생했습니다: {str(e)}",
+                            "id": st.session_state.message_counter,
+                            "summary": ""
+                        }
+                        st.session_state.messages.append(error_message)
+                        st.session_state.message_counter += 1
+        
+        st.rerun()
+    
+    def _generate_summary_answer(self, llm_handler: LLMHandler, query: str, full_answer: str) -> str:
+        """요약 답변 생성"""
+        try:
+            llm = llm_handler._create_llm()
+            summary_prompt = f"""
+            다음 질문과 답변을 바탕으로 2-3문장으로 간단히 요약해주세요.
+            
+            질문: {query}
+            
+            원본 답변:
+            {full_answer}
+            
+            요약 (간단하고 핵심로운 2-3문장):
+            """
+            
+            response = llm.invoke([("user", summary_prompt)])
+            return response.content.strip()
+        except:
+            # 요약 생성 실패 시 기본 메시지
+            return "답변이 준비되었습니다. 클릭하여 상세 답변을 확인하세요."
+    
+    def _render_detailed_view(self):
+        """상세 보기 화면 렌더링"""
+        message_id = st.session_state.detailed_view
+        
+        # 해당 메시지 찾기
+        target_message = None
+        for msg in st.session_state.messages:
+            if msg.get("id") == message_id:
+                target_message = msg
+                break
+        
+        if not target_message:
+            st.error("메시지를 찾을 수 없습니다.")
+            st.session_state.detailed_view = None
+            st.rerun()
+            return
+        
+        # 뒤로가기 버튼
+        if st.button("⬅️ 채팅으로 돌아가기"):
+            st.session_state.detailed_view = None
+            st.rerun()
+            return
+        
+        st.divider()
+        
+        # 질문 표시
+        st.subheader("🙋‍♂️ 질문")
+        st.markdown(f"**{target_message.get('query', '질문 정보 없음')}**")
+        
+        # 상세 답변 표시
+        st.subheader("🤖 상세 답변")
+        st.markdown(target_message.get("content", "답변 정보 없음"))
+        
+        # 미허용 토큰 로그
+        unknown_tokens = target_message.get("unknown_tokens", [])
+        if unknown_tokens:
+            with st.expander("미허용 토큰 감지 로그", expanded=False):
+                st.write(", ".join(sorted(set(unknown_tokens))))
+        
+        # 근거 스니펫 표시
+        docs = target_message.get("docs", [])
+        if docs:
+            # 거절 응답인지 확인
+            content = target_message.get("content", "")
+            rejection_keywords = [
+                "강의록에서 다루지 않은 주제",
+                "강의록에 없는 내용",
+                "제공된 컨텍스트에서 찾을 수 없",
+                "강의록에서 관련 내용을 찾을 수 없"
+            ]
+            
+            is_rejection = any(keyword in content for keyword in rejection_keywords)
+            
+            if not is_rejection:
+                self._render_evidence_snippets(docs)
+            else:
+                st.info("💡 관련 내용이 강의록에 없어 근거 스니펫을 표시하지 않습니다.")
     
     def run(self):
         """애플리케이션 실행"""
