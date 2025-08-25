@@ -399,6 +399,7 @@ python -m streamlit run lecture_rag/app.py
 ---
 ### 📌 5.1 답변 섹션(개요 + RAG 코드 샘플)
 <img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/4f9553b6-979b-4427-bf19-4383ca24c5ee" />
+
 - 상단에 “답변” 제목과 함께 RAG의 개념 요약이 먼저 노출되고, 그 아래에는 기본 RAG 체인을 구성하는 코드 예시가 포함된다.  
 - 이 화면은 사용자가 모델이 어떤 방식으로 답을 생성하는지 이해하도록 돕는 “학습/가이드 영역” 역할을 한다.  
 
