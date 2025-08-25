@@ -33,8 +33,6 @@
 
 
 
-
-
 # 1. 팀 소개
 
 <div align="center">
