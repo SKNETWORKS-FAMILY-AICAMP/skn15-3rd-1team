@@ -368,6 +368,9 @@ python -m streamlit run lecture_rag/app.py
 # 5. 수행결과
 ## 🎥 시연 화면 (예시)
 
+<img width="1000" height="400" alt="image" src="https://github.com/user-attachments/assets/0fd41515-b341-40e1-8f5b-6a7e342a348b" />
+
+
 ---
 
 ### 🏠 5.0 홈 화면(Overview)
