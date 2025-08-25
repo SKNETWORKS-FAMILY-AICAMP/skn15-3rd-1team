@@ -374,6 +374,7 @@ python -m streamlit run lecture_rag/app.py
 
 <img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/60f44115-c70d-4ebf-b8a6-3390a60f5c0e" />
 <br>
+
 **설정 패널(좌측)**
 - FAISS 저장 디렉터리: 벡터 인덱스와 허용 토큰 파일이 저장될 로컬 경로를 지정한다(예: `.lecture_index`).  
 - LLM 모델 선택: 기본값은 환경변수(예: `LECTURE_RAG_MODEL`)를 따르며, 드롭다운에서 실행 중에 변경 가능하다.  
