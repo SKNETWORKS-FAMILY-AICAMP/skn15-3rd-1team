@@ -1,5 +1,42 @@
 # skn15-3rd-1team
 
+## 목차
+- [1. 팀 소개](#1-팀-소개)
+- [2. 프로젝트 기간](#2-프로젝트-기간)
+- [3. 프로젝트 개요](#3-프로젝트-개요)
+  - [3-1. 프로젝트명](#-프로젝트명)
+  - [3-2. 프로젝트 배경 및 목적](#-프로젝트-배경-및-목적)
+  - [3.3 프로젝트 소개](#-프로젝트-소개)
+  - [3.4 기대효과](#-기대효과)
+  - [3.5 대상 사용자](#-대상-사용자)
+  - [프로젝트 폴더 구조](#-프로젝트-폴더-구조)
+  - [모듈 및 함수 별 기능](#모듈-및-함수-별-기능)
+  - [LangGraph Flow](#-langgraph-flow)
+  - [시스템 아키텍쳐](#-시스템-아키텍쳐)
+  - [전체 파이프라인](#-전체-파이프라인)
+  - [단계별 입·출력](#-단계별-입출력)
+  - [프롬프트](#프롬프트)
+    - [System Prompt](#system-prompt)
+    - [Answer Prompt](#answer-prompt)
+    - [프롬프트 의도](#프롬프트-의도)
+  - [데이터 전처리](#데이터-전처리)
+  - [환경설정](#환경설정)
+    
+[4. 기술스택](#-4.-기술스택) 
+
+[5. 수행결과](#-5.-수행결과)
+  - [0) 홈 화면(Overview)](#-0-홈-화면overview)
+  - [1) 답변 섹션(개요 + RAG 코드 샘플)](#-1-답변-섹션개요--rag-코드-샘플)
+  - [2) 근거 스니펫(세부 확인 패널)](#-2-근거-스니펫세부-확인-패널)
+  - [3) 질의/옵션 입력 영역(실행 패널)](#-3-질의옵션-입력-영역실행-패널)
+  - [4) 최종 답변 + 근거 요약(결과 패널)](#-4-최종-답변--근거-요약결과-패널)
+  - [5) 답변 방식 비교](#-5-답변-방식-비교)
+
+ [6. 한 줄 회고](#-6-한-줄-회고)
+
+
+
+
 
 # 1. 팀 소개
 
@@ -9,7 +46,7 @@
 
 
 
-| 조태민 | 박진우 | 서혜선 | 임가은 | 임경원 | 홍민식 |
+| **조태민** | **박진우** | **서혜선** | **임가은** | **임경원** | **홍민식** |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | <img width="110" height="120" alt="Image" src="https://github.com/user-attachments/assets/f4e37d90-54e7-412f-9eb0-6c94ffd08170" /> | <img width="110" height="120" alt="Image" src="https://github.com/user-attachments/assets/6ec5c5be-b7dc-4b77-84f8-73eae0735138" /> | <img width="110" height="120" alt="Image" src="https://github.com/user-attachments/assets/98f8c5b4-eaf1-44f1-ac6f-c90be49f40fb" /> | <img width="110" height="120" alt="Image" src="https://github.com/user-attachments/assets/48f3f3e0-5118-4c93-b7c1-4302fd0c6803" /> | <img width="110" height="120" alt="Image" src="https://github.com/user-attachments/assets/b5ad3ea4-cdde-4ad8-bde3-8237cdd6cae0" /> | <img width="110" height="120" alt="Image" src="https://github.com/user-attachments/assets/84179981-6f18-4ad5-adab-9a7216a254c5" /> |
 | [@o2mandoo](https://github.com/o2mandoo) | [@pjw876](https://github.com/pjw876) | [@hyeseon](https://github.com/hyeseon7135) | [@mars7421](https://github.com/mars7421) | [@KYUNGWON-99](https://github.com/KYUNGWON-99) | [@minnnsik](https://github.com/minnnsik) |
@@ -72,7 +109,7 @@ SKN15-3rd-1Team/
 │   ├── utils.py                        # 텍스트 I/O, 코드블록 감지, 허용 토큰 유틸
 │   └── vector_store.py                 # FAISS 임베딩/인덱싱/검색, allowed_tokens.json 관리
 ├── .gitignore                          # Git 제외 규칙
-├── langgraph_flow.py                   # 랭그래프 파이프라인 정의/다이어그램 생성 스크립트
+├── langgraph_flow.py                   # LangGraph 파이프라인 정의/다이어그램 생성 스크립트
 ├── main.py                             # (선택) 앱 실행 진입점
 ├── rag_flow.png                        # 파이프라인 이미지(README 삽입용)
 ├── rag_flow_mermaid.md                 # Mermaid 다이어그램 정의(문서화용)
@@ -84,6 +121,39 @@ SKN15-3rd-1Team/
 # pycache/ - Python 캐시
 # .claude/ - Claude Code 설정
 ```
+---
+## 🔗모듈 및 함수 별 기능
+📦 **패키지/폴더**, 🧩 **모듈(파일)**, 🧪 **테스트/예시**, ⚙️ **설정/환경**, 💾 **저장/인덱스**, 🔍 **검색**, 🧠 **LLM/프롬프트**, 🧰 **유틸**, 🖥️ **UI**
+
+| **파일/모듈** | **주요 함수/클래스** | **설명 **|
+| --- | --- | --- |
+| ⚙️ **config.py** | `Config` | 전역 설정을 보관하는 데이터클래스(모델명, 온도, 경로 등). |
+|  | `from_env()` | 환경변수에서 설정 로드. |
+|  | `to_env()` | 현재 설정을 환경변수에 반영. |
+| 🧰 **utils.py** | `read_text()` | 파일을 UTF-8로 읽어 텍스트 반환. |
+|  | `detect_code_blocks()` | 텍스트에서 코드/일반 텍스트 블록 분리. |
+|  | `extract_allowed_tokens()` | import/함수/클래스/상수에서 허용 토큰 추출. |
+|  | `find_unknown_tokens()` | 코드에서 비허용 모듈/심볼 탐지. |
+| 🧩 **document_processor.py** | `DocumentProcessor.process()` | 강의록을 읽고 청크 `Document` 리스트로 변환. |
+|  | `_chunk_by_date()` | YYYY.MM.DD 날짜 기준 분할 및 메타 생성. |
+|  | `_chunk_by_content()` | 코드/텍스트 특성에 맞는 추가 분할. |
+| 💾 **vector_store.py** | `VectorStore.index_document()` | 임베딩 후 FAISS 인덱스 생성·저장(허용 토큰 JSON 포함). |
+|  | `search()` | 질의 임베딩 기반 Top‑K 유사 문서 검색. |
+|  | `_load_index()` | 디스크의 FAISS 인덱스 로드. |
+|  | `_save_index()` | FAISS 인덱스 저장. |
+| 🧠 **llm_handler.py** | `generate_answer()` | 질의+컨텍스트로 LLM 답변 생성, 필요 시 제약 재시도. |
+|  | `_make_context_block()` | 프롬프트용 컨텍스트 문자열 구성. |
+|  | `_check_unknown_tokens()` | 답변 코드 블록의 비허용 토큰 검사. |
+|  | `_create_style_hint()` | 허용 모듈/심볼 힌트 문자열 생성. |
+| 🖥️ **app.py** | `LectureRAGApp.run()` | Streamlit 앱 실행. |
+|  | `_render_sidebar()` | 설정 사이드바 렌더링(모델/온도/경로). |
+|  | `_render_qa_section()` | 질의·Top‑K·답변 생성 UI 렌더링. |
+|  | `_handle_indexing()` | 업로드/경로 입력 → 인덱싱 처리. |
+|  | `_handle_qa()` | 검색→LLM 생성→토큰 검증→표시 파이프라인. |
+|  | `_render_evidence_snippets()` | 근거 스니펫 및 메타 표시. |
+
+
+
 ---
 ## ♒ LangGraph Flow
 <img width="250" height="600" alt="image" src="https://github.com/user-attachments/assets/9834c9d1-7bf2-4400-868e-90cbff2487c5" />
@@ -120,7 +190,7 @@ SKN15-3rd-1Team/
 | ♻️ 재시도 입력/출력 | 입력: query+금지목록, context, 프롬프트 → 출력: 교정된 answer. |
 ---
 ## 프롬프트
-### Systeam Prompt
+### System Prompt
 ```
  system_prompt: str = (
         "당신은 수업용 코치입니다.\n"
@@ -171,7 +241,7 @@ def process_file(self, file_path: Path) -> List[Document]:
 - read_text(file_path) → utils.py의 함수
 
 - 전체 텍스트를 불러와서 chunk_documents로 전달
-
+```
 2️⃣ 날짜 기반 청크 분할
 ```python
 def chunk_documents(self, text: str, source: str) -> List[Document]:
@@ -267,10 +337,16 @@ pip install -r requirements.txt
 ```
 ### 2️⃣ 환경 변수 (.env) 설정
 ```
-# Google Drive API (구글드라이브 연동용)
-GOOGLE_CLIENT_ID = "your_key"
-GOOGLE_CLIENT_SECRET = "your_key"
-OPENAI_API_KEY = "your_key"
+# Google Drive API (선택)
+GOOGLE_CLIENT_ID=your_key
+GOOGLE_CLIENT_SECRET=your_key
+
+# OpenAI (필수: OpenAI 모델 사용 시)
+OPENAI_API_KEY=your_key
+
+# 선택: 기본 모델/온도 덮어쓰기
+LECTURE_RAG_MODEL=gpt-4o-mini
+LECTURE_RAG_TEMPERATURE=0.2
 ```
 ### 3️⃣ 서비스 실행
 ```
@@ -281,7 +357,7 @@ python -m streamlit run lecture_rag/app.py
 # 파일 다운로드 후, streamlit 웹에 동적으로 업로드 후 이용가능
 ```
 ---
-# 4. 기술 스택
+# 4. 기술스택
 
 
 | Field	| Tool |
@@ -296,10 +372,12 @@ python -m streamlit run lecture_rag/app.py
 ---
 # 5. 수행결과
 ## 🎥 시연 화면 (예시)
-<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/60f44115-c70d-4ebf-b8a6-3390a60f5c0e" />
-****
+
 ---
+
 ### 🏠 0) 홈 화면(Overview)
+
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/60f44115-c70d-4ebf-b8a6-3390a60f5c0e" />
 **설정 패널(좌측)**
 - FAISS 저장 디렉터리: 벡터 인덱스와 허용 토큰 파일이 저장될 로컬 경로를 지정한다(예: `.lecture_index`).  
 - LLM 모델 선택: 기본값은 환경변수(예: `LECTURE_RAG_MODEL`)를 따르며, 드롭다운에서 실행 중에 변경 가능하다.  
@@ -327,7 +405,9 @@ python -m streamlit run lecture_rag/app.py
 <img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/4f9553b6-979b-4427-bf19-4383ca24c5ee" />
 - 상단에 “답변” 제목과 함께 RAG의 개념 요약이 먼저 노출되고, 그 아래에는 기본 RAG 체인을 구성하는 코드 예시가 포함된다.  
 - 이 화면은 사용자가 모델이 어떤 방식으로 답을 생성하는지 이해하도록 돕는 “학습/가이드 영역” 역할을 한다.  
+
 ---
+
 ### 📌 2) 근거 스니펫(세부 확인 패널)
 <img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/fea657c8-a0a9-4dc6-9f60-90692c2d184a" />
 
@@ -358,7 +438,8 @@ python -m streamlit run lecture_rag/app.py
   - 근거 스니펫 패널로 어떤 강의 일자/라인에서 정보를 인용했는지 검증 가능하다.  
 
 ### 2) 비컨텍스트 일반지식 질문 화면: “호날두가 누구야?”
-<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/2639cf92-4692-4912-92ee-2ae39238a519" />
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/f6ee3139-8944-43eb-94a8-b18d8c16befb" />
+
 
 - 목적: 강의록 범위를 벗어난 일반 지식 질문에 대해 시스템이 어떻게 안전하게 응답하는지 보여준다.  
 - 특징:
@@ -371,15 +452,15 @@ python -m streamlit run lecture_rag/app.py
 ---
 # 6. 한 줄 회고
 
-|조태민|박진우|서혜선|
+|**조태민**|**박진우**|**서혜선**|
 |----|---|---|
-| LLM을 활용해서, 데이터의 저장, 청크, 임베딩, 라우터, 래그 등 랭채인을 이용한 파이프라인을 처음부터 끝까지 다뤄볼 수 있었습니다. 의도대로 기능을 구현하고 논리를 설계하면서 흐름을 더 잘 이해할 수 있는 기회를 얻어 좋았습니다. |  | 업로드된 문서 기반으로 LLM이 질의응답하는 구조를 구현하며, 코드 중심 접근의 장점을 체감할 수 있었습니다. 이해안됐던 부분들도 이해할 수 있었고 팀원들도 다 열심히 해줘서 좋은 결과로 마무리한 것 같아 좋습니다. 다들 고생하셨습니다. |
+| LLM을 활용해서, 데이터의 저장, 청크, 임베딩, 라우터, 래그 등 랭채인을 이용한 파이프라인을 처음부터 끝까지 다뤄볼 수 있었습니다. 의도대로 기능을 구현하고 논리를 설계하면서 흐름을 더 잘 이해할 수 있는 기회를 얻어 좋았습니다. | 문서 기반 질의응답을 목표로 RAG 파이프라인을 설계·구현하면서, 모델을 바꾸는 것보다 청킹 전략과 리트리버/프롬프트 튜닝, 간단한 평가 루프의 반복 개선이 성능에 더 효과적임을 배웠습니다. 팀원들과 코드를 중심으로 논리를 맞추며 전체 흐름을 선명하게 이해할 수 있어 큰 도움이 되었습니다. | 업로드된 문서 기반으로 LLM이 질의응답하는 구조를 구현하며, 코드 중심 접근의 장점을 체감할 수 있었습니다. 이해안됐던 부분들도 이해할 수 있었고 팀원들도 다 열심히 해줘서 좋은 결과로 마무리한 것 같아 좋습니다. 다들 고생하셨습니다. |
 
 
 
-|임가은|임경원|홍민식|
+|**임가은**|**임경원**|**홍민식**|
 |----|---|---|
-| LLM에게 내 문서를 전달하여 그를 바탕으로 정보를 얻을 수 있다는 점이 흥미로웠다. gpt처럼 마냥 새로운 것을 주는 게 아니라, 내 문서를 기반으로 대답한다는 점이 좋았고, 다양한 문서 형식을 처리하기 위해 전처리 과정과 청킹 전략이 얼마나 중요한지 깨달았다. LLM 관련으로 좋은 경험이 된 것 같다.  | 이번 프로젝트는 단순히 LLM을 활용하는 기술을 익히는 것을 넘어, 데이터의 흐름을 처음부터 끝까지 직접 설계하고 제어하는 경험이었습니다. 각 단계가 유기적으로 연결되어야만 의도한 대로 기능이 구현되는 것을 보며 시스템 전반의 논리적인 구조를 설계하는 능력을 기를 수 있었습니다. 앞으로 더 복잡하고 정교한 LLM 애플리케이션을 개발하는 데 도움이 되었습니다. |  |
+| LLM에게 내 문서를 전달하여 그를 바탕으로 정보를 얻을 수 있다는 점이 흥미로웠다. gpt처럼 마냥 새로운 것을 주는 게 아니라, 내 문서를 기반으로 대답한다는 점이 좋았고, 다양한 문서 형식을 처리하기 위해 전처리 과정과 청킹 전략이 얼마나 중요한지 깨달았다. LLM 관련으로 좋은 경험이 된 것 같다.  | 이번 프로젝트는 단순히 LLM을 활용하는 기술을 익히는 것을 넘어, 데이터의 흐름을 처음부터 끝까지 직접 설계하고 제어하는 경험이었습니다. 각 단계가 유기적으로 연결되어야만 의도한 대로 기능이 구현되는 것을 보며 시스템 전반의 논리적인 구조를 설계하는 능력을 기를 수 있었습니다. 앞으로 더 복잡하고 정교한 LLM 애플리케이션을 개발하는 데 도움이 되었습니다. |LLM을 통해 데이터 처리와 RAG 파이프라인에 대해서   복잡한 흐름을  배울수 있게 되었습니다 |
 
 
 
