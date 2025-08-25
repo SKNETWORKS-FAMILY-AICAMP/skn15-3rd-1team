@@ -21,6 +21,7 @@
     - [프롬프트 의도](#프롬프트-의도)
   - [3.13 데이터 전처리](#313-데이터-전처리)
   - [3.14 환경설정](#314-환경설정)
+  - [3.15 임베딩 선정 이유](#315-임베딩-선정-이유)
 - [4. 기술스택](#4-기술스택)
 - [5. 수행결과](#5-수행결과)
   - [5.0 홈 화면(Overview)](#50-홈-화면overview)
@@ -351,6 +352,10 @@ python -m streamlit run lecture_rag/app.py
 ```
 # 파일 다운로드 후, streamlit 웹에 동적으로 업로드 후 이용가능
 ```
+
+## 3.15 임베딩 선정 이유
+<img width="865" height="726" alt="image" src="https://github.com/user-attachments/assets/5f1cda08-24b0-4297-a1b8-c518d72f6dcf" />
+
 ---
 # 4. 기술스택
 
