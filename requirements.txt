@@ -6,3 +6,7 @@ faiss-cpu>=1.7.4
 sentence-transformers>=2.2.2
 openai>=1.12.0
 python-dotenv>=1.0.0
+
+# Google Drive API (선택사항)
+google-api-python-client>=2.0.0
+google-auth-oauthlib>=0.8.0

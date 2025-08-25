@@ -12,6 +12,7 @@ import streamlit as st
 from .config import Config
 from .vector_store import VectorStore
 from .llm_handler import LLMHandler
+from .google_drive import GoogleDriveClient, is_google_drive_available
 
 
 class LectureRAGApp:
@@ -88,12 +89,27 @@ class LectureRAGApp:
         st.divider()
         st.subheader("인덱싱")
         
+        # Google Drive에서 가져오기 버튼 (상단에 배치)
+        if is_google_drive_available():
+            if st.button("📥 구글드라이브에서 강의록 가져오기", 
+                        help="SKN15 폴더의 강의록.txt를 자동으로 다운로드합니다",
+                        use_container_width=True):
+                self._handle_google_drive_download()
+            st.divider()  # 구분선 추가
+        else:
+            st.info("💡 Google Drive 연동을 위해 `pip install google-api-python-client google-auth-oauthlib` 설치")
+            st.divider()
+        
+        # 파일 업로드 및 경로 입력
+        st.write("**또는 직접 업로드:**")
         upload = st.file_uploader(
             "강의록 파일 업로드(.txt, .md 등)", 
             type=["txt", "md", "py", "mdx"], 
             accept_multiple_files=False
         )
-        manual_path = st.text_input("또는 로컬 강의록 경로 입력", value="강의록.txt")
+        
+        st.write("**또는 로컬 파일 경로:**")
+        manual_path = st.text_input("파일 경로를 입력하세요", value="강의록.txt")
 
         if st.button("인덱싱 실행", type="primary"):
             self._handle_indexing(vector_store, upload, manual_path, model, temp)
@@ -131,6 +147,61 @@ class LectureRAGApp:
         with st.expander("허용 토큰(모듈/심볼) 보기"):
             st.json(allowed)
     
+    def _handle_google_drive_download(self):
+        """Google Drive에서 강의록 다운로드 처리"""
+        try:
+            with st.spinner("Google Drive 연결 중..."):
+                drive_client = GoogleDriveClient()
+                
+                # 인증 확인
+                auth_result = drive_client.authenticate()
+                
+                if auth_result is True:
+                    # 이미 인증됨 - 바로 다운로드
+                    with st.spinner("SKN15/강의록.txt 다운로드 중..."):
+                        success = drive_client.download_lecture_file(Path("강의록.txt"))
+                        
+                    if success:
+                        st.success("✅ 구글드라이브에서 강의록.txt를 성공적으로 다운로드했습니다!")
+                        st.info("이제 '인덱싱 실행' 버튼을 클릭하여 인덱싱을 진행하세요.")
+                    else:
+                        st.error("❌ 파일 다운로드에 실패했습니다.")
+                        
+                elif isinstance(auth_result, tuple):
+                    # 인증 필요
+                    auth_success, auth_url = auth_result
+                    
+                    st.warning("🔐 Google Drive 인증이 필요합니다.")
+                    st.markdown(f"**1단계:** [여기를 클릭하여 인증하세요]({auth_url})")
+                    
+                    with st.expander("📋 인증 과정 안내", expanded=True):
+                        st.write("1. 위 링크 클릭 → Google 로그인")
+                        st.write("2. 앱 권한 승인")
+                        st.write("3. ✨ **브라우저에 표시되는 코드를 복사**")
+                        st.write("4. 아래 입력란에 붙여넣기")
+                        st.code("예시: 4/0AZEOvhX-abcd1234efgh5678...")
+                    
+                    # 인증 코드 입력란
+                    auth_code = st.text_input(
+                        "**2단계:** 인증 코드를 여기에 붙여넣으세요:",
+                        help="브라우저에 'Please copy this code...' 라고 나오는 긴 코드를 복사해서 붙여넣으세요",
+                        placeholder="4/0AZEOvhX-..."
+                    )
+                    
+                    if auth_code and st.button("인증 완료"):
+                        try:
+                            if drive_client.complete_auth(auth_code):
+                                st.success("✅ 인증 완료! 다시 다운로드 버튼을 클릭하세요.")
+                                st.rerun()
+                            else:
+                                st.error("❌ 인증에 실패했습니다.")
+                        except Exception as e:
+                            st.error(f"❌ 인증 처리 중 오류: {str(e)}")
+                            
+        except Exception as e:
+            st.error(f"❌ Google Drive 연결 실패: {str(e)}")
+            st.info("💡 클라이언트 ID가 올바르게 설정되었는지 확인하세요.")
+    
     def _render_qa_section(
         self, 
         vector_store: VectorStore, 
@@ -147,7 +218,7 @@ class LectureRAGApp:
             st.subheader("질의응답")
             query = st.text_input(
                 "질문을 입력하세요", 
-                placeholder="예) 리스트를 역순으로 정렬하는 함수 만들어줘"
+                placeholder="예) RAG에 대해 알려줘"
             )
         
         with colOpt:
@@ -269,11 +340,41 @@ class LectureRAGApp:
     
     def run(self):
         """애플리케이션 실행"""
+        # URL 파라미터에서 Google OAuth 코드 자동 처리
+        self._auto_handle_oauth_callback()
+        
         # 사이드바 렌더링
         vector_store, model, temp = self._render_sidebar()
         
         # 질의응답 섹션 렌더링
         self._render_qa_section(vector_store, model, temp)
+    
+    def _auto_handle_oauth_callback(self):
+        """OAuth 콜백을 자동으로 처리"""
+        query_params = st.query_params
+        auth_code = query_params.get("code")
+        
+        if auth_code:
+            # 인증 코드가 URL에 있으면 자동 처리
+            st.info("🔄 Google Drive 인증을 처리하고 있습니다...")
+            
+            try:
+                drive_client = GoogleDriveClient()
+                if drive_client.complete_auth(auth_code):
+                    st.success("✅ Google Drive 인증이 완료되었습니다!")
+                    st.info("이제 '📥 구글드라이브에서 강의록 가져오기' 버튼을 사용할 수 있습니다.")
+                    
+                    # URL 파라미터 제거하고 새로고침
+                    st.query_params.clear()
+                    st.rerun()
+                else:
+                    st.error("❌ 인증 처리에 실패했습니다.")
+                    
+            except Exception as e:
+                st.error(f"❌ 인증 처리 중 오류 발생: {str(e)}")
+                
+            # URL 파라미터 제거
+            st.query_params.clear()
 
 
 def main():

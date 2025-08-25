@@ -47,3 +47,6 @@ Thumbs.db
 
 # FAISS index files (may contain secrets)
 .lecture_index/
+
+# Google OAuth tokens
+.google_token.json
